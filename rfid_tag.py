@@ -208,6 +208,15 @@ def do_clone_uid(reader):
     finally:
         reader.MFRC522_StopCrypto1()
 
+def do_test_gen2(reader):
+    uid = scan(reader, ask_timeout())
+    if uid is None:
+        return
+    try:
+        test_gen2(reader, uid)
+    finally:
+        reader.MFRC522_StopCrypto1()
+
 def test_gen2(reader, uid):
     """Attempts a harmless rewrite of block 0 with its own current contents.
     If this succeeds, the card is Gen2/CUID. If auth or write fails, it isn't."""
@@ -226,7 +235,7 @@ def test_gen2(reader, uid):
 
 def main():
     reader = MFRC522Reader()
-    actions = {"1": do_read, "2": do_write, "3": do_write_saved, "4": do_clone_uid, "5": test_gen2}
+    actions = {"1": do_read, "2": do_write, "3": do_write_saved, "4": do_clone_uid, "5": do_test_gen2}
     try:
         while True:
             print("\n=== MFRC522 Menu ===")
