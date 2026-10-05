@@ -19,7 +19,7 @@ import json
 import os
 import time
 
-from mfrc522 import MFRC522 as MFRC522Reader
+from mfrc522 import MFRC522 as MFRC522Reader # type: ignore
 KEY = [0xFF] * 6          # factory default Key A
 DATA_BLOCKS = (8, 9, 10)  # sector 2 data blocks (16 bytes each)
 TRAILER_BLOCK = 11        # sector 2 trailer - never written
@@ -204,19 +204,20 @@ def do_clone_uid(reader):
 
 def main():
     reader = MFRC522Reader()
-    actions = {"1": do_read, "2": do_write, "3": do_write_saved}
+    actions = {"1": do_read, "2": do_write, "3": do_write_saved, "4": do_clone_uid}
     try:
         while True:
             print("\n=== MFRC522 Menu ===")
             print("1. Read tag")
             print("2. Write tag")
             print("3. Write a saved entry's data to a tag")
-            print("4. Quit")
+            print("4. Clone card UID")
+            print("5. Quit")
             try:
                 choice = input("> ").strip()
             except (KeyboardInterrupt, EOFError):
                 break
-            if choice == "4":
+            if choice == "5":
                 break
             action = actions.get(choice)
             if action:
