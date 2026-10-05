@@ -1,0 +1,5 @@
+# Install with: pip install --no-deps -r requirements.txt
+# (mfrc522 declares RPi.GPIO, which conflicts with rpi-lgpio on the Pi 5)
+mfrc522
+spidev
+rpi-lgpio
