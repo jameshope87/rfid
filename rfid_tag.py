@@ -220,16 +220,16 @@ def do_test_gen2(reader):
 def test_gen2(reader, uid):
     """Attempts a harmless rewrite of block 0 with its own current contents.
     If this succeeds, the card is Gen2/CUID. If auth or write fails, it isn't."""
-    if not authenticate(reader, uid):
-        raise RuntimeError("Auth on sector 0 trailer failed - not Gen2, or uses a non-default key.")
-    current_block0 = reader.MFRC522_Read(0)
-    if not current_block0:
-        print("Could not even read block 0 - unusual, check positioning.")
-        return
     if reader.MFRC522_Auth(reader.PICC_AUTHENT1A, 3, KEY, uid) != reader.MI_OK:
         print("Auth on sector 0 trailer failed - not Gen2, or uses a non-default key.")
         return
-    result = reader.MFRC522_Write(0, current_block0)  # writes back the SAME bytes
+    
+    current_block0 = reader.MFRC522_Read(0)
+    if not current_block0:
+        print("Auth succeeded but read failed - unusual, check positioning.")
+        return
+
+    result = reader.MFRC522_Write(0, current_block0)
     if result == reader.MI_OK:
         print("Write succeeded - this is a Gen2/CUID card.")
     else:
