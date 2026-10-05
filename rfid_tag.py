@@ -180,7 +180,13 @@ def write_uid_gen2(reader, current_uid, new_uid4):
     # Sector 0 trailer is block 3, not block 11 - auth there, not on TRAILER_BLOCK
     if reader.MFRC522_Auth(reader.PICC_AUTHENT1A, 3, KEY, current_uid) != reader.MI_OK:
         raise RuntimeError("Auth on sector 0 failed - not a Gen2 card, or wrong key")
-    reader.MFRC522_Write(0, block0)
+    result = reader.MFRC522_Write(0, block0)
+    if result != reader.MI_OK:
+        raise RuntimeError("Write to block 0 rejected - card is not Gen2/CUID writable")
+    # Verify by reading back rather than trusting the write status alone
+    readback = reader.MFRC522_Read(0)
+    if readback is None or readback[:4] != list(new_uid4):
+        raise RuntimeError(f"Write reported OK but readback doesn't match: {readback}")
 
 def do_clone_uid(reader):
     print("Scan the ORIGINAL fob to read its UID...")
@@ -202,9 +208,25 @@ def do_clone_uid(reader):
     finally:
         reader.MFRC522_StopCrypto1()
 
+def test_gen2(reader, uid):
+    """Attempts a harmless rewrite of block 0 with its own current contents.
+    If this succeeds, the card is Gen2/CUID. If auth or write fails, it isn't."""
+    current_block0 = reader.MFRC522_Read(0)
+    if not current_block0:
+        print("Could not even read block 0 - unusual, check positioning.")
+        return
+    if reader.MFRC522_Auth(reader.PICC_AUTHENT1A, 3, KEY, uid) != reader.MI_OK:
+        print("Auth on sector 0 trailer failed - not Gen2, or uses a non-default key.")
+        return
+    result = reader.MFRC522_Write(0, current_block0)  # writes back the SAME bytes
+    if result == reader.MI_OK:
+        print("Write succeeded - this is a Gen2/CUID card.")
+    else:
+        print("Write rejected - likely a genuine card or Gen1a (needs backdoor commands).")
+
 def main():
     reader = MFRC522Reader()
-    actions = {"1": do_read, "2": do_write, "3": do_write_saved, "4": do_clone_uid}
+    actions = {"1": do_read, "2": do_write, "3": do_write_saved, "4": do_clone_uid, "5": test_gen2}
     try:
         while True:
             print("\n=== MFRC522 Menu ===")
@@ -212,12 +234,13 @@ def main():
             print("2. Write tag")
             print("3. Write a saved entry's data to a tag")
             print("4. Clone card UID")
-            print("5. Quit")
+            print("5. Test Writable")
+            print("6. Quit")
             try:
                 choice = input("> ").strip()
             except (KeyboardInterrupt, EOFError):
                 break
-            if choice == "5":
+            if choice == "6":
                 break
             action = actions.get(choice)
             if action:
