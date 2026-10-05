@@ -220,6 +220,8 @@ def do_test_gen2(reader):
 def test_gen2(reader, uid):
     """Attempts a harmless rewrite of block 0 with its own current contents.
     If this succeeds, the card is Gen2/CUID. If auth or write fails, it isn't."""
+    if not authenticate(reader, uid):
+        raise RuntimeError("Auth on sector 0 trailer failed - not Gen2, or uses a non-default key.")
     current_block0 = reader.MFRC522_Read(0)
     if not current_block0:
         print("Could not even read block 0 - unusual, check positioning.")
