@@ -108,7 +108,7 @@ def scan(reader, timeout):
 
 
 def do_read(reader):
-    uid = scan(reader, ask_timeout())
+    uid = scan(reader, DEFAULT_TIMEOUT)
     if uid is None:
         return
     try:
@@ -148,7 +148,7 @@ def get_text():
 def do_write(reader):
     text = get_text()
     if text is not None:
-        write_text(reader, text, ask_timeout())
+        write_text(reader, text, DEFAULT_TIMEOUT)
 
 
 def do_write_saved(reader):
@@ -161,7 +161,7 @@ def do_write_saved(reader):
     choice = input("Entry number to write to a tag (blank to cancel): ").strip()
     if not choice.isdigit() or not 1 <= int(choice) <= len(entries):
         return
-    write_text(reader, entries[int(choice) - 1]["data"], ask_timeout())
+    write_text(reader, entries[int(choice) - 1]["data"], DEFAULT_TIMEOUT)
 
 def build_block0(uid4, manufacturer_bytes=None):
     """uid4: 4-byte UID. Returns the 16-byte block 0 payload."""
@@ -190,14 +190,14 @@ def write_uid_gen2(reader, current_uid, new_uid4):
 
 def do_clone_uid(reader):
     print("Scan the ORIGINAL fob to read its UID...")
-    src_uid = scan(reader, ask_timeout())
+    src_uid = scan(reader, DEFAULT_TIMEOUT)
     if src_uid is None:
         return
     new_uid4 = src_uid[:4]
     reader.MFRC522_StopCrypto1()
 
     print("Now scan the BLANK magic card to write to...")
-    dst_uid = scan(reader, ask_timeout())
+    dst_uid = scan(reader, DEFAULT_TIMEOUT)
     if dst_uid is None:
         return
     try:
@@ -209,7 +209,7 @@ def do_clone_uid(reader):
         reader.MFRC522_StopCrypto1()
 
 def do_test_gen2(reader):
-    uid = scan(reader, ask_timeout())
+    uid = scan(reader, DEFAULT_TIMEOUT)
     if uid is None:
         return
     try:
