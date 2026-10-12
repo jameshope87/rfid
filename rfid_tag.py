@@ -182,7 +182,7 @@ def write_uid_gen2(reader, current_uid, new_uid4):
         raise RuntimeError("Auth on sector 0 failed - not a Gen2 card, or wrong key")
     reader.MFRC522_Write(0, block0)
     readback = reader.MFRC522_Read(0)
-    if result != reader.MI_OK:
+    if readback != reader.MI_OK:
         raise RuntimeError("Write to block 0 rejected - card is not Gen2/CUID writable")
     # Verify by reading back rather than trusting the write status alone
     readback = reader.MFRC522_Read(0)
