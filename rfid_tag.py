@@ -182,12 +182,8 @@ def write_uid_gen2(reader, current_uid, new_uid4):
         raise RuntimeError("Auth on sector 0 failed - not a Gen2 card, or wrong key")
     reader.MFRC522_Write(0, block0)
     readback = reader.MFRC522_Read(0)
-    if readback != reader.MI_OK:
-        raise RuntimeError("Write to block 0 rejected - card is not Gen2/CUID writable")
-    # Verify by reading back rather than trusting the write status alone
-    readback = reader.MFRC522_Read(0)
     if readback is None or readback[:4] != list(new_uid4):
-        raise RuntimeError(f"Write reported OK but readback doesn't match: {readback}")
+        raise RuntimeError(f"Write did not take - card is not Gen2/CUID writable (readback: {readback})")
 
 def do_clone_uid(reader):
     print("Scan the ORIGINAL fob to read its UID...")
