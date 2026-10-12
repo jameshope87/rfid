@@ -196,7 +196,7 @@ def do_clone_uid(reader):
         return
     new_uid4 = src_uid[:4]
     reader.MFRC522_StopCrypto1()
-
+    time.sleep(2)
     print("Now scan the BLANK magic card to write to...")
     dst_uid = scan(reader, DEFAULT_TIMEOUT)
     if dst_uid is None:
@@ -237,9 +237,60 @@ def test_gen2(reader, uid):
     else:
         print("Write rejected - likely a genuine card or Gen1a (needs backdoor commands).")
 
+def gen1a_unlock(reader):
+    """Send the Gen1a backdoor sequence (0x40 as a 7-bit command, then 0x43)
+    to unlock block 0 for writing without standard authentication."""
+    # 0x40 must go out as 7 bits, not the usual 8 - set BitFramingReg accordingly
+    reader.Write_MFRC522(reader.BitFramingReg, 0x07)
+    status, back, back_len = reader.MFRC522_ToCard(reader.PCD_TRANSCEIVE, [0x40])
+    if status != reader.MI_OK or back_len != 4 or (back[0] & 0x0F) != 0x0A:
+        reader.Write_MFRC522(reader.BitFramingReg, 0x00)
+        return False
+
+    # 0x43 goes out as a normal full byte
+    status, back, back_len = reader.MFRC522_ToCard(reader.PCD_TRANSCEIVE, [0x43])
+    reader.Write_MFRC522(reader.BitFramingReg, 0x00)
+    return status == reader.MI_OK and back_len == 4 and (back[0] & 0x0F) == 0x0A
+
+
+def gen1a_write_block0(reader, block0_bytes):
+    """Writes raw bytes to block 0 on a Gen1a magic card. No auth needed -
+    the backdoor unlock replaces it. Verifies by reading back afterwards,
+    since MFRC522_Write doesn't return a usable status."""
+    if len(block0_bytes) != 16:
+        raise ValueError("Block 0 payload must be exactly 16 bytes")
+
+    if not gen1a_unlock(reader):
+        raise RuntimeError("Backdoor unlock failed - card may not be Gen1a, or needs repositioning")
+
+    reader.MFRC522_Write(0, block0_bytes)  # reuses the library's existing write protocol
+
+    readback = reader.MFRC522_Read(0)
+    if readback is None or readback[:4] != list(block0_bytes[:4]):
+        raise RuntimeError(f"Write did not take - readback: {readback}")
+
+def do_gen1a_write(reader):
+    print("Scan the ORIGINAL fob to read its UID...")
+    src_uid = scan(reader, ask_timeout())
+    if src_uid is None:
+        return
+    new_uid4 = src_uid[:4]
+    reader.MFRC522_StopCrypto1()
+    time.sleep(2)
+    print("Now scan the BLANK Gen1a card to write to...")
+    dst_uid = scan(reader, ask_timeout())
+    if dst_uid is None:
+        return
+    block0 = build_block0(new_uid4)  # from earlier - reuse as-is
+    try:
+        gen1a_write_block0(reader, block0)
+        print("UID written and verified:", uid_str(new_uid4))
+    except RuntimeError as exc:
+        print("Error:", exc)
+
 def main():
     reader = MFRC522Reader()
-    actions = {"1": do_read, "2": do_write, "3": do_write_saved, "4": do_clone_uid, "5": do_test_gen2}
+    actions = {"1": do_read, "2": do_write, "3": do_write_saved, "4": do_clone_uid, "5": do_test_gen2,"6": do_gen1a_write}
     try:
         while True:
             print("\n=== MFRC522 Menu ===")
@@ -248,12 +299,13 @@ def main():
             print("3. Write a saved entry's data to a tag")
             print("4. Clone card UID")
             print("5. Test Writable")
-            print("6. Quit")
+            print("6. Clone card UID Gen1")
+            print("7. Quit")
             try:
                 choice = input("> ").strip()
             except (KeyboardInterrupt, EOFError):
                 break
-            if choice == "6":
+            if choice == "7":
                 break
             action = actions.get(choice)
             if action:
