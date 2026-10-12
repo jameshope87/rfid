@@ -180,7 +180,8 @@ def write_uid_gen2(reader, current_uid, new_uid4):
     # Sector 0 trailer is block 3, not block 11 - auth there, not on TRAILER_BLOCK
     if reader.MFRC522_Auth(reader.PICC_AUTHENT1A, 3, KEY, current_uid) != reader.MI_OK:
         raise RuntimeError("Auth on sector 0 failed - not a Gen2 card, or wrong key")
-    result = reader.MFRC522_Write(0, block0)
+    reader.MFRC522_Write(0, block0)
+    readback = reader.MFRC522_Read(0)
     if result != reader.MI_OK:
         raise RuntimeError("Write to block 0 rejected - card is not Gen2/CUID writable")
     # Verify by reading back rather than trusting the write status alone
@@ -229,8 +230,9 @@ def test_gen2(reader, uid):
         print("Auth succeeded but read failed - unusual, check positioning.")
         return
 
-    result = reader.MFRC522_Write(0, current_block0)
-    if result == reader.MI_OK:
+    reader.MFRC522_Write(0, current_block0)
+    readback = reader.MFRC522_Read(0)
+    if readback == current_block0:
         print("Write succeeded - this is a Gen2/CUID card.")
     else:
         print("Write rejected - likely a genuine card or Gen1a (needs backdoor commands).")
